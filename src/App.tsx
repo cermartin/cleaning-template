@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Phone, ArrowRight, Star, Shield, CheckCircle, MapPin, Menu, X, ChevronRight } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 // --- Components ---
 
@@ -8,65 +8,71 @@ function Header({ onOpenQuote }: { onOpenQuote: () => void }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5 transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white font-serif italic">L</div>
-          <span className="font-display font-bold text-xl tracking-tight">LUMINA</span>
-        </div>
-
-        <nav className="hidden md:flex items-center gap-8">
-          <a href="#services" className="text-sm font-medium hover:text-accent transition-colors">Services</a>
-          <a href="#pricing" className="text-sm font-medium hover:text-accent transition-colors">Pricing</a>
-          <a href="#reviews" className="text-sm font-medium hover:text-accent transition-colors">Reviews</a>
-          <a href="#areas" className="text-sm font-medium hover:text-accent transition-colors">Areas</a>
-        </nav>
-
-        <div className="hidden md:flex items-center gap-6">
-          <a href="tel:+15551234567" className="flex items-center gap-2 text-sm font-medium hover:opacity-70 transition-opacity">
-            <Phone className="w-4 h-4" />
-            <span>(555) 123-4567</span>
+    <>
+      {/* Skip to main content - UX Rule: Skip Links */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-black focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm">Skip to main content</a>
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5 transition-all duration-300" role="banner">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-2" aria-label="Lumina Commercial Cleaning - Home">
+            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white font-serif italic" aria-hidden="true">L</div>
+            <span className="font-display font-bold text-xl tracking-tight">LUMINA</span>
           </a>
-          <button 
-            onClick={onOpenQuote}
-            className="bg-black text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
-          >
-            Get a Free Quote
-          </button>
-        </div>
 
-        <button className="md:hidden p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-          {isMenuOpen ? <X /> : <Menu />}
-        </button>
-      </div>
+          <nav className="hidden md:flex items-center gap-8" aria-label="Main navigation">
+            <a href="#services" className="text-sm font-medium hover:text-accent transition-colors">Services</a>
+            <a href="#pricing" className="text-sm font-medium hover:text-accent transition-colors">Pricing</a>
+            <a href="#reviews" className="text-sm font-medium hover:text-accent transition-colors">Reviews</a>
+            <a href="#areas" className="text-sm font-medium hover:text-accent transition-colors">Areas</a>
+          </nav>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-20 left-0 right-0 bg-white border-b border-black/5 p-6 md:hidden flex flex-col gap-4 shadow-xl"
-          >
-            <a href="#services" className="text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Services</a>
-            <a href="#pricing" className="text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Pricing</a>
-            <a href="#reviews" className="text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Reviews</a>
-            <a href="#areas" className="text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Areas</a>
-            <div className="h-px bg-black/5 my-2" />
-            <a href="tel:+15551234567" className="flex items-center gap-2 text-lg font-medium">
-              <Phone className="w-5 h-5" /> (555) 123-4567
+          <div className="hidden md:flex items-center gap-6">
+            <a href="tel:+15551234567" className="flex items-center gap-2 text-sm font-medium hover:opacity-70 transition-opacity">
+              <Phone className="w-4 h-4" />
+              <span>(555) 123-4567</span>
             </a>
-            <button 
-              onClick={() => { setIsMenuOpen(false); onOpenQuote(); }}
-              className="bg-black text-white w-full py-3 rounded-full text-lg font-medium"
+            <button
+              onClick={onOpenQuote}
+              className="bg-black text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
             >
               Get a Free Quote
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </header>
+          </div>
+
+          <button className="md:hidden p-2" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label={isMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={isMenuOpen}>
+            {isMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          </button>
+        </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-20 left-0 right-0 bg-white border-b border-black/5 p-6 md:hidden flex flex-col gap-4 shadow-xl"
+              role="navigation"
+              aria-label="Mobile navigation"
+            >
+              <a href="#services" className="text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Services</a>
+              <a href="#pricing" className="text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Pricing</a>
+              <a href="#reviews" className="text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Reviews</a>
+              <a href="#areas" className="text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Areas</a>
+              <div className="h-px bg-black/5 my-2" />
+              <a href="tel:+15551234567" className="flex items-center gap-2 text-lg font-medium">
+                <Phone className="w-5 h-5" /> (555) 123-4567
+              </a>
+              <button
+                onClick={() => { setIsMenuOpen(false); onOpenQuote(); }}
+                className="bg-black text-white w-full py-3 rounded-full text-lg font-medium"
+              >
+                Get a Free Quote
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+    </>
   );
 }
 
@@ -76,18 +82,19 @@ function Hero({ onOpenQuote }: { onOpenQuote: () => void }) {
     target: ref,
     offset: ["start start", "end start"]
   });
-  
+
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   return (
-    <section ref={ref} className="relative h-screen min-h-[800px] flex items-center justify-center overflow-hidden">
+    <section ref={ref} className="relative h-screen min-h-[800px] flex items-center justify-center overflow-hidden" aria-label="Hero">
       <motion.div style={{ y, opacity }} className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-black/30 z-10" />
-        <img 
-          src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2301&auto=format&fit=crop" 
-          alt="Gleaming modern office space" 
+        <div className="absolute inset-0 bg-black/30 z-10" aria-hidden="true" />
+        <img
+          src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2301&auto=format&fit=crop"
+          alt="Pristine modern office corridor with glass walls and polished floors, showcasing professional commercial cleaning standards"
           className="w-full h-full object-cover"
+          loading="eager"
         />
       </motion.div>
 
@@ -101,13 +108,13 @@ function Hero({ onOpenQuote }: { onOpenQuote: () => void }) {
             PREMIUM COMMERCIAL CLEANING
           </span>
           <h1 className="font-display font-bold text-5xl md:text-7xl lg:text-8xl tracking-tight mb-6 text-balance">
-            Elevating Standards <br/> for Modern Workspaces
+            Elevating Standards <br /> for Modern Workspaces
           </h1>
           <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10 font-light leading-relaxed">
             We serve elite offices, medical facilities, and luxury retail spaces in the greater metro area. Experience the difference of a team that takes pride in perfection.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button 
+            <button
               onClick={onOpenQuote}
               className="bg-white text-black px-8 py-4 rounded-full text-lg font-medium hover:bg-gray-100 transition-colors w-full sm:w-auto"
             >
@@ -119,12 +126,12 @@ function Hero({ onOpenQuote }: { onOpenQuote: () => void }) {
           </div>
         </motion.div>
       </div>
-      
-      <div className="absolute bottom-10 left-0 right-0 flex justify-center z-20">
-        <motion.div 
-          animate={{ y: [0, 10, 0] }} 
+
+      <div className="absolute bottom-10 left-0 right-0 flex justify-center z-20" aria-hidden="true">
+        <motion.div
+          animate={{ y: [0, 10, 0] }}
           transition={{ repeat: Infinity, duration: 2 }}
-          className="text-white/50"
+          className="text-white/50 motion-reduce:animate-none"
         >
           <div className="w-[1px] h-16 bg-gradient-to-b from-transparent via-white/50 to-transparent mx-auto" />
         </motion.div>
@@ -135,13 +142,13 @@ function Hero({ onOpenQuote }: { onOpenQuote: () => void }) {
 
 function TrustBadges() {
   return (
-    <section className="py-12 border-b border-black/5 bg-surface">
+    <section className="py-12 border-b border-black/5 bg-surface" aria-label="Trust credentials">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-          <div className="flex items-center gap-2 font-semibold text-lg"><Shield className="w-6 h-6" /> Fully Insured</div>
-          <div className="flex items-center gap-2 font-semibold text-lg"><CheckCircle className="w-6 h-6" /> OSHA Certified</div>
-          <div className="flex items-center gap-2 font-semibold text-lg"><Star className="w-6 h-6" /> Top Rated 2025</div>
-          <div className="flex items-center gap-2 font-semibold text-lg"><Shield className="w-6 h-6" /> Bonded</div>
+          <div className="flex items-center gap-2 font-semibold text-lg"><Shield className="w-6 h-6" aria-hidden="true" /> Fully Insured</div>
+          <div className="flex items-center gap-2 font-semibold text-lg"><CheckCircle className="w-6 h-6" aria-hidden="true" /> OSHA Certified</div>
+          <div className="flex items-center gap-2 font-semibold text-lg"><Star className="w-6 h-6" aria-hidden="true" /> Top Rated 2025</div>
+          <div className="flex items-center gap-2 font-semibold text-lg"><Shield className="w-6 h-6" aria-hidden="true" /> Bonded</div>
         </div>
       </div>
     </section>
@@ -153,17 +160,20 @@ function Services() {
     {
       title: "Corporate Offices",
       description: "Daily janitorial services tailored for high-traffic professional environments.",
-      image: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop"
+      image: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop",
+      alt: "Bright, sunlit corporate office workspace with clean desks and modern furnishings"
     },
     {
       title: "Medical Facilities",
       description: "Hospital-grade sanitation protocols for clinics, dental offices, and labs.",
-      image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2053&auto=format&fit=crop"
+      image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2053&auto=format&fit=crop",
+      alt: "Spotless medical clinic reception area with sanitised surfaces and professional lighting"
     },
     {
       title: "Luxury Retail",
       description: "Immaculate presentation for showrooms and boutiques where detail matters.",
-      image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop"
+      image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop",
+      alt: "High-end retail boutique showroom with gleaming display shelves and polished flooring"
     }
   ];
 
@@ -172,7 +182,7 @@ function Services() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
           <div className="max-w-2xl">
-            <h2 className="font-display font-bold text-4xl md:text-5xl mb-6">Meticulous Service.<br/>Unmatched Quality.</h2>
+            <h2 className="font-display font-bold text-4xl md:text-5xl mb-6">Meticulous Service.<br />Unmatched Quality.</h2>
             <p className="text-gray-600 text-lg">We don't just clean; we curate environments that inspire productivity and confidence.</p>
           </div>
           <a href="#" className="group flex items-center gap-2 font-medium text-lg hover:text-accent transition-colors">
@@ -182,7 +192,7 @@ function Services() {
 
         <div className="grid md:grid-cols-3 gap-8">
           {services.map((service, index) => (
-            <motion.div 
+            <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -192,10 +202,11 @@ function Services() {
             >
               <div className="aspect-[4/5] overflow-hidden rounded-2xl mb-6 relative">
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10" />
-                <img 
-                  src={service.image} 
-                  alt={service.title}
+                <img
+                  src={service.image}
+                  alt={service.alt}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy"
                 />
               </div>
               <h3 className="font-display font-bold text-2xl mb-2 group-hover:text-accent transition-colors">{service.title}</h3>
@@ -223,7 +234,7 @@ function Pricing({ onOpenQuote }: { onOpenQuote: () => void }) {
             { name: "Professional", price: "Custom", desc: "Our most popular plan for daily business operations.", features: ["Daily Cleaning", "Kitchen/Breakroom Detail", "High-Dusting", "Supply Restocking", "Window Spot Cleaning"], highlight: true },
             { name: "Executive", price: "Custom", desc: "Comprehensive care for high-end facilities.", features: ["Day Porter Services", "Deep Carpet Cleaning", "Floor Waxing/Buffing", "Upholstery Cleaning", "24/7 Emergency Response"] }
           ].map((plan, i) => (
-            <motion.div 
+            <motion.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -245,7 +256,7 @@ function Pricing({ onOpenQuote }: { onOpenQuote: () => void }) {
                   ))}
                 </ul>
               </div>
-              <button 
+              <button
                 onClick={onOpenQuote}
                 className={`w-full py-4 rounded-full font-medium transition-colors ${plan.highlight ? 'bg-white text-black hover:bg-gray-100' : 'bg-black text-white hover:bg-zinc-800'}`}
               >
@@ -265,7 +276,7 @@ function Reviews() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center gap-4 mb-12">
           <div className="flex items-center gap-1 text-accent">
-            {[1,2,3,4,5].map(i => <Star key={i} className="w-6 h-6 fill-current" />)}
+            {[1, 2, 3, 4, 5].map(i => <Star key={i} className="w-6 h-6 fill-current" />)}
           </div>
           <span className="text-2xl font-display font-bold">4.9/5 Average Rating</span>
         </div>
@@ -276,7 +287,7 @@ function Reviews() {
             { name: "Michael Ross", role: "Director, Ross Medical Group", text: "In a medical setting, cleanliness is non-negotiable. Lumina consistently exceeds our strict sanitation standards. Highly recommended." },
             { name: "Elena Rodriguez", role: "Owner, Luxe Boutique", text: "Our showroom floors have never looked better. Clients constantly compliment the cleanliness of our store. It's a game changer for our brand image." }
           ].map((review, i) => (
-            <motion.div 
+            <motion.div
               key={i}
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
@@ -285,7 +296,7 @@ function Reviews() {
               className="bg-surface p-8 rounded-2xl"
             >
               <div className="flex gap-1 text-accent mb-4">
-                {[1,2,3,4,5].map(j => <Star key={j} className="w-4 h-4 fill-current" />)}
+                {[1, 2, 3, 4, 5].map(j => <Star key={j} className="w-4 h-4 fill-current" />)}
               </div>
               <p className="text-lg leading-relaxed mb-6 font-medium">"{review.text}"</p>
               <div>
@@ -302,7 +313,7 @@ function Reviews() {
 
 function Areas() {
   const areas = [
-    "Downtown Metro", "North Hills", "Westside Business District", 
+    "Downtown Metro", "North Hills", "Westside Business District",
     "Tech Park", "Harbor Front", "South Bay", "Eastside Industrial", "Uptown"
   ];
 
@@ -339,62 +350,83 @@ function Areas() {
 }
 
 function QuoteModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // UX Rule: Focus trap and keyboard handling for modals
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+    // Focus the modal on open
+    setTimeout(() => modalRef.current?.focus(), 100);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
-      <motion.div 
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="quote-modal-title">
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        aria-hidden="true"
       />
-      <motion.div 
+      <motion.div
+        ref={modalRef}
+        tabIndex={-1}
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-3xl p-8 w-full max-w-lg relative z-10 shadow-2xl"
+        className="bg-white rounded-3xl p-8 w-full max-w-lg relative z-10 shadow-2xl outline-none"
       >
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <X className="w-5 h-5" />
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Close quote form">
+          <X className="w-5 h-5" aria-hidden="true" />
         </button>
-        
-        <h2 className="font-display font-bold text-3xl mb-2">Get a Free Quote</h2>
+
+        <h2 id="quote-modal-title" className="font-display font-bold text-3xl mb-2">Get a Free Quote</h2>
         <p className="text-gray-500 mb-8">Tell us about your space and cleaning needs.</p>
-        
+
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); alert("Thank you! We will contact you shortly."); onClose(); }}>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">First Name</label>
-              <input type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors" placeholder="Jane" required />
+              <label htmlFor="quote-first-name" className="text-sm font-medium text-gray-700">First Name</label>
+              <input id="quote-first-name" type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors" placeholder="Jane" required autoComplete="given-name" />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Last Name</label>
-              <input type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors" placeholder="Doe" required />
+              <label htmlFor="quote-last-name" className="text-sm font-medium text-gray-700">Last Name</label>
+              <input id="quote-last-name" type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors" placeholder="Doe" required autoComplete="family-name" />
             </div>
           </div>
-          
+
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Work Email</label>
-            <input type="email" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors" placeholder="jane@company.com" required />
+            <label htmlFor="quote-email" className="text-sm font-medium text-gray-700">Work Email</label>
+            <input id="quote-email" type="email" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors" placeholder="jane@company.com" required autoComplete="email" />
           </div>
-          
+
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Company Name</label>
-            <input type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors" placeholder="Acme Corp" />
+            <label htmlFor="quote-company" className="text-sm font-medium text-gray-700">Company Name</label>
+            <input id="quote-company" type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors" placeholder="Acme Corp" autoComplete="organization" />
           </div>
-          
+
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Service Needed</label>
-            <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors bg-white">
+            <label htmlFor="quote-service" className="text-sm font-medium text-gray-700">Service Needed</label>
+            <select id="quote-service" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 outline-none transition-colors bg-white">
               <option>Daily Janitorial</option>
               <option>Deep Cleaning</option>
               <option>Floor Care</option>
               <option>Post-Construction</option>
             </select>
           </div>
-          
+
           <button type="submit" className="w-full bg-black text-white font-bold text-lg py-4 rounded-xl hover:bg-zinc-800 transition-colors mt-4">
             Submit Request
           </button>
@@ -417,11 +449,10 @@ function Footer() {
             <p className="text-gray-400 max-w-md mb-8">
               Setting the gold standard for commercial cleaning. We bring clarity, hygiene, and professionalism to your business environment.
             </p>
-            <div className="flex gap-4">
-              {/* Social placeholders */}
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 cursor-pointer transition-colors">IG</div>
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 cursor-pointer transition-colors">LI</div>
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 cursor-pointer transition-colors">FB</div>
+            <div className="flex gap-4" role="list" aria-label="Social media links">
+              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Follow us on Instagram" role="listitem"><span aria-hidden="true">IG</span></a>
+              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Connect on LinkedIn" role="listitem"><span aria-hidden="true">LI</span></a>
+              <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Like us on Facebook" role="listitem"><span aria-hidden="true">FB</span></a>
             </div>
           </div>
 
@@ -441,7 +472,7 @@ function Footer() {
             <ul className="space-y-3 text-gray-400">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 shrink-0 mt-0.5" />
-                <span>123 Commerce Blvd, Suite 400<br/>Metro City, ST 12345</span>
+                <span>123 Commerce Blvd, Suite 400<br />Metro City, ST 12345</span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 shrink-0" />
@@ -473,7 +504,7 @@ export default function App() {
   return (
     <div className="font-sans text-primary bg-white selection:bg-black selection:text-white scroll-smooth">
       <Header onOpenQuote={() => setIsQuoteOpen(true)} />
-      <main>
+      <main id="main-content">
         <Hero onOpenQuote={() => setIsQuoteOpen(true)} />
         <TrustBadges />
         <Services />
@@ -482,7 +513,7 @@ export default function App() {
         <Areas />
       </main>
       <Footer />
-      
+
       <AnimatePresence>
         {isQuoteOpen && <QuoteModal isOpen={isQuoteOpen} onClose={() => setIsQuoteOpen(false)} />}
       </AnimatePresence>
