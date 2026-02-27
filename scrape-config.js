@@ -14,10 +14,13 @@
 //   node scrape-config.js --reset "Name"      → Force re-generate
 // ============================================================
 
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-const http = require('http');
+import fs from 'fs';
+import path from 'path';
+import https from 'https';
+import http from 'http';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const CSV_FILE = path.join(__dirname, '..', 'Commercial Cleaning Companies Leads - Enriched.csv');
 const CONFIGS_DIR = path.join(__dirname, 'src', 'configs');
@@ -203,9 +206,80 @@ function extractLogo(html, baseUrl) {
 }
 
 // ============================================================
+// GOOGLE SEARCH FALLBACK
+// Used when a company has no website or website fetch fails
+// Extracts: description, review snippets, business type from
+// Google search result JSON-LD structured data
+// ============================================================
+async function searchGoogle(companyName, city) {
+    const query = encodeURIComponent(`${companyName} ${city} cleaning`);
+    const url = `https://www.google.com/search?q=${query}&hl=en`;
+    process.stdout.write(`  🔍 Searching Google for "${companyName}"... `);
+    try {
+        const html = await fetchHTML(url);
+        if (!html || html.length < 500) { console.log('✗ (blocked)'); return null; }
+        const data = parseGoogleData(html, companyName);
+        const found = Object.values(data).filter(v => v && (Array.isArray(v) ? v.length : true)).length;
+        console.log(`✓  (${found} data points found)`);
+        return data;
+    } catch (e) {
+        console.log(`✗ (${e.message})`);
+        return null;
+    }
+}
+
+function parseGoogleData(html, companyName) {
+    const result = { description: '', reviews: [], services: [], hours: '' };
+
+    // Extract all JSON-LD blocks
+    const ldBlocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi)];
+    for (const block of ldBlocks) {
+        try {
+            const obj = JSON.parse(block[1]);
+            const items = Array.isArray(obj) ? obj : [obj, ...(obj['@graph'] || [])];
+            for (const item of items) {
+                if (!item['@type']) continue;
+                const type = Array.isArray(item['@type']) ? item['@type'].join(',') : item['@type'];
+                if (/LocalBusiness|Organization|Service/i.test(type)) {
+                    if (item.description && !result.description) result.description = item.description;
+                    if (item.openingHours && !result.hours) result.hours = [].concat(item.openingHours).join(', ');
+                    const reviews = item.review || item.reviews || [];
+                    for (const r of [].concat(reviews).slice(0, 4)) {
+                        const text = r.reviewBody || r.description || '';
+                        const name = (r.author?.name) || 'Google Reviewer';
+                        const rating = r.reviewRating?.ratingValue || 5;
+                        if (text.length > 20) result.reviews.push({ name, text, rating: parseInt(rating) });
+                    }
+                }
+            }
+        } catch { /* skip malformed JSON */ }
+    }
+
+    // Extract description from meta if not found in JSON-LD
+    if (!result.description) {
+        const metaMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']{20,})/i)
+            || html.match(/<meta[^>]+content=["']([^"']{20,})["'][^>]+name=["']description["']/i);
+        if (metaMatch) result.description = metaMatch[1].trim();
+    }
+
+    // Try extracting review snippets from visible text (Google snippets)
+    if (result.reviews.length === 0) {
+        const reviewSnippets = [...html.matchAll(/"([^"]{40,200})"[^"]*(?:star|review|rating)/gi)];
+        for (const s of reviewSnippets.slice(0, 3)) {
+            const text = s[1].replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16)));
+            if (/clean|profess|recommend|service|great|excel/i.test(text)) {
+                result.reviews.push({ name: 'Google Reviewer', text, rating: 5 });
+            }
+        }
+    }
+
+    return result;
+}
+
+// ============================================================
 // CONFIG GENERATOR — produces the full TypeScript config file
 // ============================================================
-function generateConfig(company, scraped, baseUrl) {
+function generateConfig(company, scraped, baseUrl, google) {
     const name = company['Company Name'];
     let shortName = name
         .replace(/\s+(Ltd\.?|Limited|LTD|Services|Cleaning|Company|Co\.?)$/gi, '')
@@ -243,6 +317,7 @@ function generateConfig(company, scraped, baseUrl) {
     const socialBlock = socialLines || '            // TODO: add social media links';
 
     const metaDescription = scraped.metaDescription
+        || (google && google.description)
         || `${name} — Professional cleaning services in ${city}. Get a free quote today.`;
 
     const logoLine = scraped.logoUrl
@@ -382,28 +457,10 @@ ${socialBlock}
 
     // --- REVIEWS ---
     // Google: ${rating}★ average from ${reviews} reviews
-    // TODO: add real review text from Google Maps / their website
     reviews: {
         averageRating: "${rating}/5",
         items: [
-            {
-                name: "Google Reviewer", // TODO: use real reviewer names
-                role: "Verified Google Review",
-                text: "Excellent service — very professional and reliable. Would highly recommend to anyone needing quality cleaning services in ${city}.", // TODO: use real review text
-                rating: 5,
-            },
-            {
-                name: "Google Reviewer",
-                role: "Verified Google Review",
-                text: "Very impressed with the standard of work. The team was punctual, thorough and friendly. Will definitely be using again.",
-                rating: 5,
-            },
-            {
-                name: "Google Reviewer",
-                role: "Verified Google Review",
-                text: "Reliable, professional service. Our premises have never looked better. Great value for money.",
-                rating: 5,
-            },
+${buildReviewItems(google, city)}
         ],
     },
 
@@ -437,6 +494,18 @@ export default config;
 `;
 }
 
+function buildReviewItems(google, city) {
+    const realReviews = google && google.reviews && google.reviews.length > 0 ? google.reviews : [];
+    const defaults = [
+        { name: 'Google Reviewer', text: `Excellent service — very professional and reliable. Would highly recommend to anyone needing quality cleaning services in ${city}.`, rating: 5 },
+        { name: 'Google Reviewer', text: 'Very impressed with the standard of work. The team was punctual, thorough and friendly. Will definitely be using again.', rating: 5 },
+        { name: 'Google Reviewer', text: 'Reliable, professional service. Our premises have never looked better. Great value for money.', rating: 5 },
+    ];
+    const items = realReviews.length >= 3 ? realReviews.slice(0, 3) : [...realReviews, ...defaults].slice(0, 3);
+    const source = realReviews.length >= 3 ? '// real reviews from Google' : '// TODO: replace with real review text from Google Maps';
+    return items.map(r => `            { ${source}\n                name: "${r.name.replace(/"/g, '\\"')}",\n                role: "Verified Google Review",\n                text: "${r.text.replace(/"/g, '\\"').replace(/\n/g, ' ')}",\n                rating: ${r.rating || 5},\n            },`).join('\n');
+}
+
 function countTodos(name, shortName, city, scraped) {
     // Estimate number of TODOs based on what was scraped
     let base = 7; // tagline, subTagline, services x3, pricing, reviews, areas, footer, badges
@@ -467,6 +536,7 @@ async function processCompany(company, force = false) {
     const scraped = { colors: [], fonts: null, metaDescription: '', logoUrl: '' };
     const website = company['Website'];
     let baseUrl = '';
+    let websiteOk = false;
 
     if (website) {
         baseUrl = website.startsWith('http') ? website : 'https://' + website;
@@ -480,18 +550,25 @@ async function processCompany(company, force = false) {
                 scraped.logoUrl = extractLogo(html, baseUrl);
                 const fontCount = scraped.fonts ? scraped.fonts.families.length : 0;
                 console.log(`✓  (${scraped.colors.length} colors, ${fontCount} fonts${scraped.logoUrl ? ', logo found' : ''})`);
+                websiteOk = true;
             } else {
-                console.log(`✗  (empty response — using defaults)`);
+                console.log(`✗  (empty response — trying Google)`);
             }
         } catch (e) {
-            console.log(`✗  (error: ${e.message} — using defaults)`);
+            console.log(`✗  (${e.message} — trying Google)`);
         }
-    } else {
-        console.log(`  ⚠  No website in CSV — using defaults for all styling`);
+    }
+
+    // Google fallback: always try if no website, or if website failed/had no useful data
+    let google = null;
+    if (!websiteOk || scraped.colors.length === 0) {
+        const city = company['City'] || 'London';
+        google = await searchGoogle(company['Company Name'], city);
+        await new Promise(r => setTimeout(r, 1000)); // respectful delay after Google
     }
 
     // Generate and write the config
-    const content = generateConfig(company, scraped, baseUrl);
+    const content = generateConfig(company, scraped, baseUrl, google);
     fs.writeFileSync(outputFile, content, 'utf8');
     markComplete(slug);
 

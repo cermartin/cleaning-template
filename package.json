@@ -10,7 +10,8 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "scrape": "node scrape-config.js",
-    "generate": "node generate-site.js"
+    "generate": "node generate-site.js",
+    "deploy": "node deploy.js"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

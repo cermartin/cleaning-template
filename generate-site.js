@@ -17,9 +17,12 @@
 //   5. Copies output to dist-{brand}/ folder
 // ============================================================
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const CONFIGS_DIR = path.join(__dirname, 'src', 'configs');
 const INDEX_FILE = path.join(CONFIGS_DIR, 'index.ts');
