@@ -620,15 +620,23 @@ async function main() {
 
     // --all
     if (args[0] === '--all') {
-        const withWebsites = companies.filter(c => c['Website']);
-        console.log(`\n🚀  Generating configs for ${withWebsites.length} companies with websites...\n`);
+        const MIN_RATING = 3.0;
+        const worthy = companies.filter(c => {
+            if (!c['Website']) return false; // must have website to scrape
+            const rating = parseFloat(c['Google Rating'] || '0');
+            if (rating > 0 && rating < MIN_RATING) return false; // skip clearly bad
+            return true;
+        });
+        const progress = loadProgress();
+        const pending = worthy.filter(c => !progress.completed.includes(generateSlug(c['Company Name'])));
+        console.log(`\n🚀  ${pending.length} companies to process (${worthy.length - pending.length} already done)\n`);
         let done = 0;
-        for (const company of withWebsites) {
+        for (const company of pending) {
             await processCompany(company);
-            await new Promise(r => setTimeout(r, 600)); // polite delay between requests
+            await new Promise(r => setTimeout(r, 800));
             done++;
         }
-        console.log(`\n✅  Complete! ${done} configs generated.\n`);
+        console.log(`\n✅  Complete! ${done} new configs generated.\n`);
         return;
     }
 
