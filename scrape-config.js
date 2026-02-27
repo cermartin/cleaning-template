@@ -113,7 +113,9 @@ function formatPhone(raw) {
 // WEBSITE FETCHER (follows 1 redirect, 10s timeout)
 // ============================================================
 function fetchHTML(url, depth = 0) {
-    return new Promise((resolve) => {
+    // Hard deadline — kills the request regardless of what the socket is doing
+    const timeout = new Promise(r => setTimeout(() => r(''), 6000));
+    const fetch = new Promise((resolve) => {
         if (depth > 2) return resolve('');
         const protocol = url.startsWith('https') ? https : http;
         const req = protocol.get(url, {
@@ -131,8 +133,8 @@ function fetchHTML(url, depth = 0) {
             res.on('end', () => resolve(data));
         });
         req.on('error', () => resolve(''));
-        req.setTimeout(10000, () => { req.destroy(); resolve(''); });
     });
+    return Promise.race([fetch, timeout]);
 }
 
 // ============================================================
@@ -630,11 +632,15 @@ async function main() {
         const progress = loadProgress();
         const pending = worthy.filter(c => !progress.completed.includes(generateSlug(c['Company Name'])));
         console.log(`\n🚀  ${pending.length} companies to process (${worthy.length - pending.length} already done)\n`);
+        // Process in batches of 3 in parallel to speed things up
+        const BATCH = 3;
         let done = 0;
-        for (const company of pending) {
-            await processCompany(company);
-            await new Promise(r => setTimeout(r, 800));
-            done++;
+        for (let i = 0; i < pending.length; i += BATCH) {
+            const batch = pending.slice(i, i + BATCH);
+            await Promise.all(batch.map(c => processCompany(c)));
+            done += batch.length;
+            console.log(`\n  [${done}/${pending.length} processed]\n`);
+            await new Promise(r => setTimeout(r, 600));
         }
         console.log(`\n✅  Complete! ${done} new configs generated.\n`);
         return;
